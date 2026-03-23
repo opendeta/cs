@@ -3,76 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenDeta Code Library</title>
+    <title>OpenDeta Code Library v2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #f0f4f8; color: #333; font-family: sans-serif; }
-        .code-container { background: #f1f5f9; border-radius: 12px; border: 1px solid #e2e8f0; overflow: hidden; margin-top: 10px; }
-        .code-header { background: #f8fafc; padding: 12px 16px; display: flex; justify-content: space-between; items-center; border-bottom: 1px solid #e2e8f0; }
-        .code-name { font-size: 1.25rem; font-weight: 600; color: #475569; letter-spacing: 0.5px; }
-        .copy-btn { color: #64748b; cursor: pointer; transition: 0.2s; }
-        .copy-btn:active { transform: scale(0.9); color: #3b82f6; }
-        .snippet-box { padding: 15px; font-family: monospace; font-size: 13px; color: #1e293b; background: #fff; max-height: 200px; overflow-y: auto; white-space: pre-wrap; display: none; }
-        .see-code-btn { background: #3b82f6; color: white; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; margin-top: 10px; cursor: pointer; display: inline-block; }
+        body { background: #f8fafc; color: #1e293b; font-family: sans-serif; }
+        .code-card { background: white; border-radius: 16px; border: 1px solid #e2e8f0; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .code-header-box { background: #f1f5f9; border-radius: 8px 8px 0 0; padding: 12px 16px; display: flex; justify-content: space-between; items-center; border-bottom: 2px solid #e2e8f0; }
+        .copy-icon { color: #64748b; cursor: pointer; padding: 5px; border-radius: 5px; }
+        .copy-icon:active { background: #e2e8f0; color: #2563eb; }
+        .snippet-view { background: #ffffff; border: 1px solid #e2e8f0; border-top: none; padding: 15px; font-family: 'Courier New', monospace; font-size: 13px; max-height: 300px; overflow-y: auto; display: none; white-space: pre; border-radius: 0 0 8px 8px; }
+        .btn-see { background: #2563eb; color: white; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; margin-top: 12px; display: inline-block; cursor: pointer; transition: 0.2s; }
+        .btn-see:hover { background: #1d4ed8; }
     </style>
 </head>
-<body class="p-5">
-    <h1 class="text-2xl font-black text-center text-slate-700 mb-8 uppercase tracking-widest">Code Library</h1>
-    
-    <div id="codeGrid" class="max-w-xl mx-auto space-y-8">
-        <p class="text-center text-slate-400 animate-pulse">কোডগুলো খোঁজা হচ্ছে...</p>
+<body class="p-4 sm:p-8">
+    <div class="max-w-xl mx-auto">
+        <h1 class="text-2xl font-black text-slate-800 mb-2 uppercase tracking-tighter">Code Library</h1>
+        <p id="status" class="text-[10px] text-blue-500 font-bold uppercase mb-8 tracking-widest leading-none">Checking for updates...</p>
+        
+        <div id="codeGrid" class="space-y-10">
+            </div>
     </div>
 
     <script>
         const USER = "OpenDeta";
-        const REPO = "code-storage"; // গিটহাবে এই নামে রিপোজিটরি খুলবেন
+        const REPO = "code-storage";
 
-        async function loadCodes() {
+        async function fetchCodes() {
+            const statusEl = document.getElementById('status');
             try {
-                const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/codes`);
+                // গিটহাবকে বাধ্য করা হচ্ছে নতুন ডাটা দিতে (?t= ব্যবহার করে)
+                const timestamp = new Date().getTime();
+                const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/codes?t=${timestamp}`);
+                
+                if(!res.ok) throw new Error();
                 const files = await res.json();
                 const grid = document.getElementById('codeGrid');
                 grid.innerHTML = '';
 
-                for (let file of files) {
+                // সব ফাইল লুপে ঘুরবে
+                for (let file of files.reverse()) { // reverse() দিলে নতুন কোড উপরে দেখাবে
                     if (file.name.endsWith('.json')) {
-                        const codeRes = await fetch(file.download_url);
+                        const codeRes = await fetch(`${file.download_url}?t=${timestamp}`);
                         const data = await codeRes.json();
                         
-                        const item = document.createElement('div');
-                        item.innerHTML = `
-                            <div class="mb-2">
-                                <h2 class="text-lg font-bold text-slate-800 tracking-tight">${data.fileName}</h2>
-                                <div class="code-container shadow-sm">
-                                    <div class="code-header">
-                                        <span class="code-name">${data.codeType}</span>
-                                        <div class="copy-btn" onclick="copyText('${btoa(data.content)}')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                        </div>
-                                    </div>
-                                    <div id="content-${file.sha}" class="snippet-box">${data.content}</div>
+                        const wrapper = document.createElement('div');
+                        wrapper.className = "code-item";
+                        wrapper.innerHTML = `
+                            <h2 class="text-lg font-bold text-slate-700 mb-2 px-1">${data.fileName}</h2>
+                            <div class="code-header-box">
+                                <span class="font-bold text-slate-500 tracking-wide">${data.codeType}</span>
+                                <div class="copy-icon" onclick="copyCode('${btoa(unescape(encodeURIComponent(data.content)))}')">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                                 </div>
-                                <div class="see-code-btn" onclick="toggleCode('${file.sha}')">See Code...</div>
                             </div>
+                            <div id="box-${file.sha}" class="snippet-view">${data.content}</div>
+                            <div class="btn-see" onclick="toggle('${file.sha}', this)">See Code...</div>
                         `;
-                        grid.appendChild(item);
+                        grid.appendChild(wrapper);
                     }
                 }
-            } catch (e) { grid.innerHTML = "Error loading codes."; }
+                statusEl.innerText = "All codes are up to date ✅";
+            } catch (e) {
+                statusEl.innerText = "Sync Failed! Check connection 📡";
+            }
         }
 
-        function toggleCode(id) {
-            const el = document.getElementById('content-' + id);
-            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        function toggle(id, btn) {
+            const box = document.getElementById('box-' + id);
+            if(box.style.display === 'block') {
+                box.style.display = 'none';
+                btn.innerText = "See Code...";
+            } else {
+                box.style.display = 'block';
+                btn.innerText = "Hide Code";
+            }
         }
 
-        function copyText(encoded) {
-            const text = atob(encoded);
+        function copyCode(base64) {
+            const text = decodeURIComponent(escape(atob(base64)));
             navigator.clipboard.writeText(text);
-            alert("Code Copied! ✅");
+            alert("Copied to clipboard! ");
         }
 
-        loadCodes();
+        fetchCodes();
     </script>
 </body>
 </html>
