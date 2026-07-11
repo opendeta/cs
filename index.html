@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -32,7 +32,7 @@
         async function fetchCodes() {
             const statusEl = document.getElementById('status');
             try {
-                // গিটহাবকে বাধ্য করা হচ্ছে নতুন ডাটা দিতে (?t= ব্যবহার করে)
+            
                 const timestamp = new Date().getTime();
                 const res = await fetch(`https://api.github.com/repos/${USER}/${REPO}/contents/codes?t=${timestamp}`);
                 
@@ -41,8 +41,8 @@
                 const grid = document.getElementById('codeGrid');
                 grid.innerHTML = '';
 
-                // সব ফাইল লুপে ঘুরবে
-                for (let file of files.reverse()) { // reverse() দিলে নতুন কোড উপরে দেখাবে
+                
+                for (let file of files.reverse()) {
                     if (file.name.endsWith('.json')) {
                         const codeRes = await fetch(`${file.download_url}?t=${timestamp}`);
                         const data = await codeRes.json();
